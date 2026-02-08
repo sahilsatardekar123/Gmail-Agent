@@ -1,0 +1,6 @@
+# Offline voice (optional). For strict offline, use a local faster-whisper model directory.
+sounddevice>=0.5.1
+numpy>=2.2.2
+keyboard>=0.13.5
+faster-whisper>=1.1.0
+

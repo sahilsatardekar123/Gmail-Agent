@@ -1,0 +1,128 @@
+PROJECT: Local Voice-Controlled Gmail AI Agent (V1)
+
+GOAL:
+Build a fully local AI assistant that runs offline on a laptop, accepts voice commands,
+uses a local LLM (Qwen ~2.5B) to understand intent, and interacts with Gmail via API
+to read and reply to emails with user confirmation.
+
+==================================================
+SYSTEM CONSTRAINTS
+==================================================
+- Runs locally on Windows
+- GPU: NVIDIA RTX 3050 Laptop (4GB VRAM)
+- LLM must run fully OFFLINE (no Hugging Face / no internet)
+- Internet allowed ONLY for Gmail API calls
+- V1 scope is LIMITED to Gmail read & reply
+
+==================================================
+CORE STACK (V1)
+==================================================
+- Language Model:
+  - Qwen (~2.5B parameters)
+  - PyTorch + Transformers
+  - 4-bit quantization (bitsandbytes)
+  - Short context to fit 4GB VRAM
+
+- Voice Input:
+  - Offline Speech-to-Text
+  - Faster-Whisper / Whisper
+  - Push-to-talk (keyboard triggered)
+
+- Agent Design:
+  - Hybrid tool calling
+    - Rule-based intent detection
+    - LLM generates structured arguments
+  - No autonomous tool execution
+
+==================================================
+FUNCTIONALITY (V1 ONLY)
+==================================================
+
+1. Voice Command Input
+   - User presses a key
+   - Speaks command
+   - Speech converted to text offline
+
+2. Intent Detection
+   Supported intents:
+   - Read latest Gmail emails
+   - Reply to a specific email
+   - Send a drafted reply (after confirmation)
+
+3. Gmail Capabilities
+   - Fetch latest emails (subject, sender, snippet)
+   - Select email to reply to
+   - Draft reply using LLM
+   - Fixed tone: professional + friendly
+   - ALWAYS ask for user confirmation before sending
+
+4. Safety Rules
+   - No email is sent without explicit user approval
+   - No background listening
+   - No OS-level commands
+   - No file system access (V1)
+
+==================================================
+OUT OF SCOPE (V1)
+==================================================
+- OS automation (open apps, shutdown, etc.)
+- File read/write tools
+- Web browsing
+- Wake word detection
+- Long-term memory / embeddings
+- Tone switching
+- Multiple accounts
+- Auto-send emails
+
+==================================================
+EXECUTION FLOW (V1)
+==================================================
+1. Push-to-talk activated
+2. Voice → text (offline STT)
+3. Intent detected
+4. Gmail API called (if needed)
+5. Qwen drafts response
+6. User confirmation requested
+7. Email sent ONLY if user confirms
+
+==================================================
+PROJECT STRUCTURE (EXPECTED)
+==================================================
+/project-root
+│
+├── plan.txt
+├── main.py
+├── config/
+│   ├── model_config.py
+│   ├── gmail_config.py
+│
+├── agent/
+│   ├── intent_detector.py
+│   ├── llm_engine.py
+│   ├── tool_router.py
+│
+├── tools/
+│   ├── gmail_reader.py
+│   ├── gmail_sender.py
+│
+├── voice/
+│   ├── stt.py
+│   ├── push_to_talk.py
+│
+├── utils/
+│   ├── logger.py
+│
+└── requirements.txt
+
+==================================================
+SUCCESS CRITERIA (V1)
+==================================================
+- Model runs fully offline on RTX 3050 (4GB)
+- Voice commands work reliably
+- Gmail emails can be read and replied to
+- No email is sent without confirmation
+- Stable execution without VRAM crashes
+
+==================================================
+END OF V1 PLAN
+==================================================
