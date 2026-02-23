@@ -150,8 +150,11 @@ def main() -> None:
                 email_body=state.selected.body_text,
             )
             state.draft = draft.text
-
             print("\n--- DRAFT REPLY (not sent) ---")
+            if draft.used_model:
+                print("[Info] Drafted with local Qwen model.\n")
+            else:
+                print("[Info] Fallback template used (model not loaded).\n")
             print(state.draft)
             print("--- END DRAFT ---\n")
 

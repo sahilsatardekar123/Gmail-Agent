@@ -62,14 +62,16 @@ class LlmEngine:
                     self.model_dir,
                     local_files_only=True,
                     trust_remote_code=True,
-                    torch_dtype=dtype,
+                    dtype=dtype,
                     device_map="auto" if torch.cuda.is_available() else None,
                 )
 
             self._tokenizer = tok
             self._model = model
             return True
-        except Exception:
+        except Exception as e:
+            # Surface reason in console so users can debug why local LLM failed.
+            print(f"[LLM] Failed to load local model from '{self.model_dir}': {e}")
             self._tokenizer = None
             self._model = None
             return False
