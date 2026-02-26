@@ -9,9 +9,10 @@ from agent.llm_engine import LlmEngine
 
 @dataclass(frozen=True)
 class Intent:
-    name: str  # read_latest | reply_draft | sign_out | help | unknown
+    name: str  # read_latest | reply_draft | sign_out | help | unknown | chat
     message_index: Optional[int] = None  # 1-based index from the list shown to user
     max_results: Optional[int] = None  # for read_latest: user-requested count
+    chat_response: Optional[str] = None  # for chat: the generated response from the LLM
 
 
 _REPLY_RE = re.compile(r"\b(reply|respond)\b.*?\b(\d+)\b", re.IGNORECASE)
@@ -91,6 +92,11 @@ class IntentDetector:
             if isinstance(mr, int):
                 return Intent(name="read_latest", max_results=mr)
             return Intent(name="read_latest")
+        if name == "chat":
+            resp = inferred.get("chat_response")
+            if isinstance(resp, str) and resp.strip():
+                return Intent(name="chat", chat_response=resp.strip())
+            return Intent(name="unknown")
         if name in {"help", "sign_out"}:
             return Intent(name=name)
         return Intent(name="unknown")

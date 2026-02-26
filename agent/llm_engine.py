@@ -110,23 +110,35 @@ class LlmEngine:
     def _infer_intent_with_model(self, utterance: str) -> Optional[dict[str, Any]]:
         assert self._model is not None and self._tokenizer is not None
 
-        prompt = (
+        system_prompt = (
             "You are an intent classifier for a local Gmail voice assistant.\n"
             "Return ONLY valid JSON. No extra text.\n"
             "Supported intents:\n"
-            '- {"intent":"read_latest"}\n'
+            '- {"intent":"read_latest"} (Use when user wants to read, check, or fetch emails)\n'
             '- {"intent":"read_latest","max_results":2}\n'
-            '- {"intent":"reply_draft","message_index":2}\n'
-            '- {"intent":"help"}\n'
-            '- {"intent":"sign_out"}\n'
-            '- {"intent":"unknown"}\n'
+            '- {"intent":"reply_draft","message_index":2} (Use when user wants to reply to a specific email)\n'
+            '- {"intent":"help"} (Use when user asks what they can do)\n'
+            '- {"intent":"sign_out"} (Use when user wants to log out)\n'
+            '- {"intent":"chat","chat_response":"Hello! How can I help?"} (CRITICAL: Use this for ANY greeting like "Hello", small talk, or conversational questions. Provide a short, friendly response.)\n'
+            '- {"intent":"unknown"} (Use for commands that are completely incomprehensible or unsupported)\n'
             "Rules:\n"
             "- message_index must be an integer if present.\n\n"
             "- max_results must be an integer (1-20) if present.\n\n"
-            f'User: "{utterance}"\n'
-            "JSON:\n"
+            "- chat_response must be a short string if intent is chat.\n\n"
+            "Examples:\n"
+            'User: "Read my emails"\nJSON:\n{"intent":"read_latest"}\n\n'
+            'User: "Hello, how are you?"\nJSON:\n{"intent":"chat","chat_response":"I\'m doing great, thanks for asking! Need help with your emails?"}\n\n'
+            'User: "Reply to message 2"\nJSON:\n{"intent":"reply_draft","message_index":2}\n\n'
+            'User: "Hi"\nJSON:\n{"intent":"chat","chat_response":"Hi there! How can I assist you today?"}\n'
         )
-
+        
+        # Build chat messages for instruction-tuned models
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": utterance}
+        ]
+        prompt = self._tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        
         import torch
 
         inputs = self._tokenizer(prompt, return_tensors="pt")
@@ -141,7 +153,7 @@ class LlmEngine:
                 pad_token_id=getattr(self._tokenizer, "eos_token_id", None),
             )
 
-        text = self._tokenizer.decode(out[0], skip_special_tokens=True)
+        text = self._tokenizer.decode(out[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)
         # Extract the first JSON object in output
         obj = _extract_first_json_object(text)
         if not obj:
@@ -150,7 +162,7 @@ class LlmEngine:
         if not isinstance(data, dict):
             return None
         intent = str(data.get("intent", "")).strip()
-        if intent not in {"read_latest", "reply_draft", "help", "sign_out", "unknown"}:
+        if intent not in {"read_latest", "reply_draft", "help", "sign_out", "unknown", "chat"}:
             return None
         if intent == "reply_draft":
             mi = data.get("message_index")

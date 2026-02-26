@@ -60,12 +60,18 @@ def main() -> None:
     )
     intent_detector = IntentDetector(llm=llm)
 
+    print("Pre-loading local LLM... this ensures instant replies during voice interaction.")
+    llm.try_load()
+
     state = RouterState(latest=[])
 
     print("Local Gmail Voice Agent (V1)")
     _print_help()
     if ptt is not None and stt is not None:
-        print("Tip: hold SPACE to record voice; press Enter to use text instead.\n")
+        print(
+            "Tip: when prompted, hold SPACE to talk (release to send). "
+            "If you don't press SPACE, you'll see a text prompt instead.\n"
+        )
     else:
         print("Voice mode unavailable (missing optional deps). Using text-only mode.")
         print("Fix: python -m pip install -r requirements-voice.txt\n")
@@ -78,10 +84,34 @@ def main() -> None:
             try:
                 got_audio = ptt.record_while_held(wav_path)
                 if got_audio:
+                    print("[voice] Captured audio; transcribing with Whisper...")
                     stt_res = stt.transcribe_wav(str(wav_path))
-                    transcript = stt_res.text.strip()
+                    raw_transcript = (stt_res.text or "").strip()
+                    if not raw_transcript:
+                        print("[voice] Didn't catch anything. Please try again or type your command.")
+                    else:
+                        print(f'Heard (voice): "{raw_transcript}"')
+                        while True:
+                            choice = input(
+                                "Press Enter to accept, 'e' to edit, or 'c' to cancel: "
+                            ).strip().lower()
+                            if choice in {"", "a", "accept"}:
+                                transcript = raw_transcript
+                                break
+                            if choice in {"e", "edit"}:
+                                edited = input("Edit command: ").strip()
+                                transcript = edited
+                                break
+                            if choice in {"c", "cancel"}:
+                                print("Voice command cancelled. You can type a command instead.")
+                                transcript = ""
+                                break
+                            print("Please press Enter to accept, 'e' to edit, or 'c' to cancel.")
+                else:
+                    print("[voice] No voice input detected; you can type your command.")
             except Exception as e:
                 log_event(logger, "voice_capture_error", error=str(e))
+                print("Voice capture/transcription error; please type your command instead.")
 
         if not transcript:
             transcript = input("You> ").strip()
@@ -100,6 +130,10 @@ def main() -> None:
             index=intent.message_index,
             max_results=intent.max_results,
         )
+
+        if intent.name == "chat":
+            print(f"Assistant: {intent.chat_response}")
+            continue
 
         if intent.name == "help":
             _print_help()

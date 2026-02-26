@@ -31,7 +31,9 @@ class SpeechToText:
             # device auto: uses CUDA if available
             self._whisper = WhisperModel(self.model, device="auto", compute_type="int8")
             return True
-        except Exception:
+        except Exception as e:
+            # Surface a basic hint in the terminal if the model cannot be loaded.
+            print(f"[voice] Failed to load Whisper model '{self.model}': {e}")
             self._whisper = None
             return False
 
